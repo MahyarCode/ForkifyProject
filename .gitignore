@@ -1,2 +1,3 @@
 ChartsImg/
-
+.parcel-cache/
+node_modules/

@@ -1,0 +1,25 @@
+{
+    "name": "forkify",
+    "version": "1.0.0",
+    "description": "Recipe application",
+    "scripts": {
+        "start": "parcel index.html",
+        "build": "parcel build index.html"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/MahyarCode/ForkifyProject.git"
+    },
+    "author": "MahyarCode",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/MahyarCode/ForkifyProject/issues"
+    },
+    "homepage": "https://github.com/MahyarCode/ForkifyProject#readme",
+    "devDependencies": {
+        "@parcel/transformer-sass": "^2.16.1",
+        "install": "^0.13.0",
+        "npm": "^11.6.4",
+        "parcel": "^2.16.1"
+    }
+}
