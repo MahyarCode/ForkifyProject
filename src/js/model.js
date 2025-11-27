@@ -1,12 +1,14 @@
 // TODO the M part of MVC project architecture
 
-import { API_URL } from './config.js';
+import { API_URL, RESULTS_PER_PAGE } from './config.js';
 import { getJSON } from './helpers.js';
 export const state = {
     recipe: {},
     search: {
         query: '',
         result: [],
+        resultsPerPage: RESULTS_PER_PAGE,
+        page: 1,
     },
 };
 
@@ -50,4 +52,13 @@ export const loadSearchResult = async function (query) {
         console.error(`❌❌${error}❌❌`);
         throw error;
     }
+};
+
+export const getSearchResultPage = function (page = 1) {
+    state.search.page = page;
+
+    const start = (page - 1) * state.search.resultsPerPage;
+    const end = page * state.search.resultsPerPage;
+
+    return state.search.result.slice(start, end);
 };
