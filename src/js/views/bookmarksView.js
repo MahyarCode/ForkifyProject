@@ -1,9 +1,9 @@
 import View from './View.js';
 import icons from 'url:../../img/icons.svg'; // Because of Parcel2
 
-class ResultsView extends View {
-    _parentElement = document.querySelector('.results');
-    _errorMessage = 'No recipe is found for the searched item. Please Try again';
+class BookmarksView extends View {
+    _parentElement = document.querySelector('.bookmarks__list');
+    _errorMessage = 'No bookmarks yet. Find a recipe and bookmark it.';
     _successMessage = '';
 
     _generateHTML() {
@@ -12,10 +12,9 @@ class ResultsView extends View {
 
     _generatePreviewHTML(result) {
         const id = window.location.hash.slice(1);
-
         return `
           <li class="preview">
-            <a class="preview__link${result.id === id ? ' preview__link--active' : ''}" href="#${
+            <a class="preview__link ${result.id === id ? 'preview__link--active' : ''}" href="#${
             result.id
         }">
               <figure class="preview__fig">
@@ -31,4 +30,4 @@ class ResultsView extends View {
     }
 }
 
-export default new ResultsView();
+export default new BookmarksView();

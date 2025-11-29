@@ -18,8 +18,6 @@
     "homepage": "https://github.com/MahyarCode/ForkifyProject#readme",
     "devDependencies": {
         "@parcel/transformer-sass": "^2.16.1",
-        "install": "^0.13.0",
-        "npm": "^11.6.4",
         "parcel": "^2.16.1"
     }
 }
