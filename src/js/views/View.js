@@ -8,17 +8,15 @@ export default class View {
     _errorMessage = "We couldn't find the food. Please try another one";
     _successMessage = '';
 
-    render(data) {
-        console.log(data);
-        console.log(Array.isArray(data));
+    render(data, render = true) {
         if (!data || (Array.isArray(data) && data.length === 0) || Object.keys(data).length === 0)
             return this.renderError();
 
         this._data = data;
-        // console.log('this._data in View:', this._data);
+
         const HTML = this._generateHTML();
 
-        // if (!render) return HTML;
+        if (!render) return HTML;
 
         this._clear();
         this._parentElement.insertAdjacentHTML('afterbegin', HTML);

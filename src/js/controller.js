@@ -11,7 +11,6 @@ const controlRecipes = async function () {
     try {
         // DESC Get the hash from the url
         const id = window.location.hash.slice(1);
-        console.log(recipeView);
         if (!id) return;
         recipeView.renderSpinner();
 
@@ -28,6 +27,7 @@ const controlRecipes = async function () {
         recipeView.render(model.state.recipe);
     } catch (error) {
         recipeView.renderError();
+        console.error(error);
     }
 };
 
@@ -70,7 +70,7 @@ const controlServings = function (newServings) {
 
 const controlAddBookmark = function () {
     // add and remove bookmark
-    console.log(model.state.recipe);
+
     if (!model.state.recipe.bookmark) {
         model.addBookmark(model.state.recipe);
     } else {
@@ -79,14 +79,16 @@ const controlAddBookmark = function () {
 
     // update recipe view
     recipeView.update(model.state.recipe);
-    console.log(model.state.recipe);
-    console.log('---------------------------------------------');
 
     // render bookmarks
     bookmarksView.render(model.state.bookmarks);
 };
 
+const controlBookmarks = function () {
+    bookmarksView.render(model.state.bookmarks);
+};
 const init = function () {
+    bookmarksView.addHandlerRenderBookmark(controlBookmarks);
     recipeView.addHandlerRender(controlRecipes);
     recipeView.addHandlerUpdateServings(controlServings);
     recipeView.addHandlerAddBookmark(controlAddBookmark);
