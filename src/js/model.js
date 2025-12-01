@@ -72,7 +72,7 @@ export const loadSearchResult = async function () {
     }
 };
 
-export const getSearchResultPage = function (page = 1) {
+export const getSearchResultPage = function (page) {
     state.search.page = page;
 
     const start = (page - 1) * state.search.resultsPerPage;

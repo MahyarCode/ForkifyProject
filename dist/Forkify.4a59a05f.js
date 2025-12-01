@@ -735,7 +735,7 @@ const controlRecipes = async function() {
         (0, _recipeViewJsDefault.default).renderSpinner();
         // model.state.search.page = 1;
         // TODO 0. results view to mark selected search result
-        (0, _resultsViewJsDefault.default).update(_modelJs.getSearchResultPage());
+        (0, _resultsViewJsDefault.default).update(_modelJs.getSearchResultPage(_modelJs.state.search.page));
         (0, _bookmarksViewJsDefault.default).update(_modelJs.state.bookmarks);
         //TODO 1. Loading recipe
         await _modelJs.loadRecipe(id);
@@ -755,7 +755,7 @@ const controlSearchResults = async function() {
         // TODO 2. Load search result
         await _modelJs.loadSearchResult(query);
         // TODO 3. Render search result
-        (0, _resultsViewJsDefault.default).render(_modelJs.getSearchResultPage());
+        (0, _resultsViewJsDefault.default).render(_modelJs.getSearchResultPage(_modelJs.state.search.page));
         // TODO the initial pagination button:
         (0, _paginationViewJsDefault.default).render(_modelJs.state.search);
     } catch (error) {
@@ -901,7 +901,7 @@ const loadSearchResult = async function() {
         throw error;
     }
 };
-const getSearchResultPage = function(page = 1) {
+const getSearchResultPage = function(page) {
     state.search.page = page;
     const start = (page - 1) * state.search.resultsPerPage;
     const end = page * state.search.resultsPerPage;

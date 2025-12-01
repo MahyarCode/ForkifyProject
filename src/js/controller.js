@@ -17,7 +17,7 @@ const controlRecipes = async function () {
         // model.state.search.page = 1;
 
         // TODO 0. results view to mark selected search result
-        resultsView.update(model.getSearchResultPage());
+        resultsView.update(model.getSearchResultPage(model.state.search.page));
         bookmarksView.update(model.state.bookmarks);
 
         //TODO 1. Loading recipe
@@ -43,7 +43,7 @@ const controlSearchResults = async function () {
         await model.loadSearchResult(query);
 
         // TODO 3. Render search result
-        resultsView.render(model.getSearchResultPage());
+        resultsView.render(model.getSearchResultPage(model.state.search.page));
 
         // TODO the initial pagination button:
         paginationView.render(model.state.search);
