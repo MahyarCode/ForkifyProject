@@ -8,6 +8,14 @@ export default class View {
     _errorMessage = "We couldn't find the food. Please try another one";
     _successMessage = '';
 
+    /**
+     * render the received object to the DOM
+     * @param {Object | Object[]} data the data to be rendered (e.g. recipe)
+     * @param {boolean} [render = true] (optional) if false, creates HTMLstring instead of rendering to the DOM
+     * @returns {undefined | string} A HTML string is returned if render=false
+     * @this {Object} View instance
+     * @author Jonas Schmedtmann
+     */
     render(data, render = true) {
         if (!data || (Array.isArray(data) && data.length === 0) || Object.keys(data).length === 0)
             return this.renderError();
@@ -66,9 +74,8 @@ export default class View {
 
     update(data) {
         this._data = data;
-        // console.log('this._data in View:', this._data);
+
         const newHTML = this._generateHTML();
-        // console.log(newHTML);
 
         const newDOM = document.createRange().createContextualFragment(newHTML);
         const newElements = Array.from(newDOM.querySelectorAll('*'));
@@ -78,11 +85,9 @@ export default class View {
 
         newElements.forEach((newEl, i) => {
             const curEl = curElements[i];
-            // console.log(curEl, newEl.isEqualNode(curEl));
 
             // Updates changed TEXT
             if (!newEl.isEqualNode(curEl) && newEl.firstChild?.nodeValue.trim() !== '') {
-                // console.log('🔴🔴', newEl.firstChild.nodeValue.trim());
                 curEl.textContent = newEl.textContent;
             }
 
@@ -93,8 +98,6 @@ export default class View {
                 );
             }
         });
-        // console.log(newElements);
-        // console.log(curElements);
     }
 
     _clear() {

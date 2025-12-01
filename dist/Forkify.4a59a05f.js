@@ -727,13 +727,15 @@ var _bookmarksViewJs = require("./views/bookmarksView.js");
 var _bookmarksViewJsDefault = parcelHelpers.interopDefault(_bookmarksViewJs);
 var _paginationViewJs = require("./views/paginationView.js");
 var _paginationViewJsDefault = parcelHelpers.interopDefault(_paginationViewJs);
+var _addRecipeViewJs = require("./views/addRecipeView.js");
+var _addRecipeViewJsDefault = parcelHelpers.interopDefault(_addRecipeViewJs);
+var _configJs = require("./config.js");
 const controlRecipes = async function() {
     try {
         // DESC Get the hash from the url
         const id = window.location.hash.slice(1);
         if (!id) return;
         (0, _recipeViewJsDefault.default).renderSpinner();
-        // model.state.search.page = 1;
         // TODO 0. results view to mark selected search result
         (0, _resultsViewJsDefault.default).update(_modelJs.getSearchResultPage(_modelJs.state.search.page));
         (0, _bookmarksViewJsDefault.default).update(_modelJs.state.bookmarks);
@@ -772,7 +774,6 @@ const controlServings = function(newServings) {
     // update the recipe servings (in state)
     _modelJs.updateServings(newServings);
     // update the recipe view
-    // recipeView.render(model.state.recipe);
     (0, _recipeViewJsDefault.default).update(_modelJs.state.recipe);
 };
 const controlAddBookmark = function() {
@@ -787,6 +788,30 @@ const controlAddBookmark = function() {
 const controlBookmarks = function() {
     (0, _bookmarksViewJsDefault.default).render(_modelJs.state.bookmarks);
 };
+const controlAddRecipe = async function(newRecipe) {
+    try {
+        // render spinner
+        (0, _addRecipeViewJsDefault.default).renderSpinner();
+        // upload recipe data
+        await _modelJs.uploadRecipe(newRecipe);
+        // render recipe
+        (0, _recipeViewJsDefault.default).render(_modelJs.state.recipe);
+        // display success message
+        (0, _addRecipeViewJsDefault.default).renderSuccessMessage();
+        // render bookmark view
+        (0, _bookmarksViewJsDefault.default).render(_modelJs.state.bookmarks);
+        // change id in the url
+        window.history.pushState(null, '', `#${_modelJs.state.recipe.id}`);
+        // close form window:
+        setTimeout(()=>{
+            (0, _addRecipeViewJsDefault.default).toggleWindow();
+        }, (0, _configJs.MODAL_CLOSE_SECONDS) * 1000);
+    } catch (error) {
+        console.error("\u274C\u274C", error);
+        (0, _addRecipeViewJsDefault.default).renderError(error.message);
+    }
+// Upload new Recipe data
+};
 const init = function() {
     (0, _bookmarksViewJsDefault.default).addHandlerRenderBookmark(controlBookmarks);
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipes);
@@ -794,10 +819,11 @@ const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerAddBookmark(controlAddBookmark);
     (0, _searchViewJsDefault.default).addHandlerSearch(controlSearchResults);
     (0, _paginationViewJsDefault.default).addHandlerClick(controlPagination);
+    (0, _addRecipeViewJsDefault.default)._addHandlerUpload(controlAddRecipe);
 };
 init();
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./model.js":"3QBkH","./views/recipeView.js":"3wx5k","./views/searchView.js":"kbE4Z","./views/resultsView.js":"kBQ4r","./views/paginationView.js":"7NIiB","./views/bookmarksView.js":"1qGeA"}],"jnFvT":[function(require,module,exports,__globalThis) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./model.js":"3QBkH","./views/recipeView.js":"3wx5k","./views/searchView.js":"kbE4Z","./views/resultsView.js":"kBQ4r","./views/paginationView.js":"7NIiB","./views/bookmarksView.js":"1qGeA","./views/addRecipeView.js":"8AWnP","./config.js":"2hPh4"}],"jnFvT":[function(require,module,exports,__globalThis) {
 exports.interopDefault = function(a) {
     return a && a.__esModule ? a : {
         default: a
@@ -838,6 +864,7 @@ parcelHelpers.export(exports, "getSearchResultPage", ()=>getSearchResultPage);
 parcelHelpers.export(exports, "updateServings", ()=>updateServings);
 parcelHelpers.export(exports, "addBookmark", ()=>addBookmark);
 parcelHelpers.export(exports, "deleteBookmark", ()=>deleteBookmark);
+parcelHelpers.export(exports, "uploadRecipe", ()=>uploadRecipe);
 var _configJs = require("./config.js");
 var _helpersJs = require("./helpers.js");
 const state = {
@@ -850,25 +877,26 @@ const state = {
     },
     bookmarks: []
 };
+const createRecipe = function(data) {
+    const { recipe } = data.data;
+    return {
+        id: recipe.id,
+        title: recipe.title,
+        publisher: recipe.publisher,
+        image: recipe.image_url,
+        servings: recipe.servings,
+        source: recipe.source_url,
+        cookingTime: recipe.cooking_time,
+        ingredients: recipe.ingredients,
+        ...recipe.key && {
+            key: recipe.key
+        }
+    };
+};
 const loadRecipe = async function(id) {
     try {
-        // const recipe = JSON.parse(mockIDjson).data.recipe;
-        // console.log(recipe);
-        /////////////////////////////////////////
-        // TODO this is the original ** add 'query argument in the function **
-        const data = await (0, _helpersJs.getJSON)(`${(0, _configJs.API_URL)}/${id}`);
-        const { recipe } = data.data;
-        /////////////////////////////////////////
-        state.recipe = {
-            id: recipe.id,
-            title: recipe.title,
-            publisher: recipe.publisher,
-            image: recipe.image_url,
-            servings: recipe.servings,
-            source: recipe.source_url,
-            cookingTime: recipe.cooking_time,
-            ingredients: recipe.ingredients
-        };
+        const data = await (0, _helpersJs.AJAX)(`${(0, _configJs.API_URL)}/${id}?key=${(0, _configJs.KEY)}`);
+        state.recipe = createRecipe(data);
         if (state.bookmarks.some((bookmark)=>bookmark.id === id)) state.recipe.bookmark = true;
         else state.recipe.bookmark = false;
     } catch (error) {
@@ -876,26 +904,22 @@ const loadRecipe = async function(id) {
         throw error;
     }
 };
-const loadSearchResult = async function() {
+const loadSearchResult = async function(query) {
     try {
-        //DESC delete this part !!!!!!!!!!!!!!!!! in main app
-        const data = JSON.parse((0, _configJs.mockJSON));
-        /////////////////////////////////////////
-        // TODO this is the original ** add 'query argument in the function **
-        // state.search.query = query;
-        // const data = await getJSON(`${API_URL}?search=${query}`);
-        /////////////////////////////////////////
-        // console.log(data);
+        state.search.query = query;
+        const data = await (0, _helpersJs.AJAX)(`${(0, _configJs.API_URL)}?search=${query}&key=${(0, _configJs.KEY)}`);
         state.search.result = data.data.recipes.map((rec)=>{
             return {
                 id: rec.id,
                 title: rec.title,
                 publisher: rec.publisher,
-                image: rec.image_url
+                image: rec.image_url,
+                ...rec.key && {
+                    key: rec.key
+                }
             };
         });
         state.search.page = 1;
-    // console.log(state.search.result);
     } catch (error) {
         console.error(`\u{274C}\u{274C}${error}\u{274C}\u{274C}`);
         throw error;
@@ -931,25 +955,56 @@ const deleteBookmark = function(recipe) {
     if (recipe.id === state.recipe.id) state.recipe.bookmark = false;
     persistBookmarks();
 };
+const uploadRecipe = async function(newRecipe) {
+    try {
+        const ingredients = Object.entries(newRecipe).filter((entry)=>entry[0].startsWith('ingredient') && entry[1] !== '').map((ing)=>{
+            const ingArr = ing[1].split(',').map((el)=>el.trim());
+            if (ingArr.length !== 3) throw new Error('Wrong Ingredient Format. Please Use the Correct Format!');
+            const [quantity, unit, description] = ingArr;
+            return {
+                quantity: quantity ? +quantity : null,
+                unit,
+                description
+            };
+        });
+        const recipe = {
+            title: newRecipe.title,
+            source_url: newRecipe.sourceUrl,
+            image_url: newRecipe.image,
+            publisher: newRecipe.publisher,
+            cooking_time: +newRecipe.cookingTime,
+            servings: +newRecipe.servings,
+            ingredients
+        };
+        const data = await (0, _helpersJs.AJAX)(`${(0, _configJs.API_URL)}?key=${(0, _configJs.KEY)}`, recipe);
+        state.recipe = createRecipe(data);
+        addBookmark(state.recipe);
+    } catch (error) {
+        throw error;
+    }
+};
 const init = function() {
     const storage = localStorage.getItem('bookmarks');
     if (storage) state.bookmarks = JSON.parse(storage);
 };
 init();
-console.log(state.bookmarks);
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./config.js":"2hPh4","./helpers.js":"7nL9P"}],"2hPh4":[function(require,module,exports,__globalThis) {
 // TODO the constant variables that used multiple times
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "API_URL", ()=>API_URL);
+parcelHelpers.export(exports, "KEY", ()=>KEY);
 parcelHelpers.export(exports, "TIMEOUT_SECONDS", ()=>TIMEOUT_SECONDS);
 parcelHelpers.export(exports, "RESULTS_PER_PAGE", ()=>RESULTS_PER_PAGE);
+parcelHelpers.export(exports, "MODAL_CLOSE_SECONDS", ()=>MODAL_CLOSE_SECONDS);
 parcelHelpers.export(exports, "mockJSON", ()=>mockJSON);
 parcelHelpers.export(exports, "mockIDjson", ()=>mockIDjson);
 const API_URL = 'https://forkify-api.jonas.io/api/v2/recipes';
+const KEY = '0d0d8b6b-5947-4b9a-a64c-06abf1f37f3c';
 const TIMEOUT_SECONDS = 10;
 const RESULTS_PER_PAGE = 10;
+const MODAL_CLOSE_SECONDS = 2.5;
 const mockJSON = `{"status":"success","results":53,"data":{"recipes":[{"publisher":"All Recipes","image_url":"http://forkify-api.herokuapp.com/images/100111309d9.jpg","title":"Double Crust Stuffed Pizza","id":"664c8f193e7aa067e94e8297"},{"publisher":"What's Gaby Cooking","image_url":"http://forkify-api.herokuapp.com/images/IMG_15866d21.jpg","title":"Grilled BBQ Chicken Pizza","id":"664c8f193e7aa067e94e8a12"},{"publisher":"Vintage Mixer","image_url":"http://forkify-api.herokuapp.com/images/CauliflowerPizzaCrustRecipe06fdc.jpg","title":"Cauliflower Pizza Crust Recipe","id":"664c8f193e7aa067e94e8906"},{"publisher":"The Pioneer Woman","image_url":"http://forkify-api.herokuapp.com/images/4364270576_302751a2a4f3c1.jpg","title":"PW\u{2019}s Favorite Pizza","id":"664c8f193e7aa067e94e86ba"},{"publisher":"The Pioneer Woman","image_url":"http://forkify-api.herokuapp.com/images/steakhousepizza0b87.jpg","title":"One Basic Pizza Crust","id":"664c8f193e7aa067e94e8673"},{"publisher":"The Pioneer Woman","image_url":"http://forkify-api.herokuapp.com/images/5278973957_3f9f9a21c2_o7a1b.jpg","title":"Fig-Prosciutto Pizza with Arugula","id":"664c8f193e7aa067e94e866f"},{"publisher":"101 Cookbooks","image_url":"http://forkify-api.herokuapp.com/images/best_pizza_dough_recipe1b20.jpg","title":"Best Pizza Dough Ever","id":"664c8f193e7aa067e94e8704"},{"publisher":"The Pioneer Woman","image_url":"http://forkify-api.herokuapp.com/images/fruitpizza9a19.jpg","title":"Deep Dish Fruit Pizza","id":"664c8f193e7aa067e94e8658"},{"publisher":"Real Simple","image_url":"http://forkify-api.herokuapp.com/images/pizza_300d938bd58.jpg","title":"English-Muffin Egg Pizzas","id":"664c8f193e7aa067e94e85be"},{"publisher":"Real Simple","image_url":"http://forkify-api.herokuapp.com/images/pizza_30061a5d763.jpg","title":"Salami and Brussels Sprouts Pizza","id":"664c8f193e7aa067e94e8605"},{"publisher":"BBC Good Food","image_url":"http://forkify-api.herokuapp.com/images/1813674_MEDIUM6f4a.jpg","title":"Salami &amp; peppadew pizza","id":"664c8f193e7aa067e94e856b"},{"publisher":"Closet Cooking","image_url":"http://forkify-api.herokuapp.com/images/Pizza2BQuesadillas2B2528aka2BPizzadillas25292B5002B834037bf306b.jpg","title":"Pizza Quesadillas (aka Pizzadillas)","id":"664c8f193e7aa067e94e84c2"},{"publisher":"What's Gaby Cooking","image_url":"http://forkify-api.herokuapp.com/images/PepperoniPizzaMonkeyBread8cd5.jpg","title":"Pepperoni Pizza Monkey Bread","id":"664c8f193e7aa067e94e8433"},{"publisher":"All Recipes","image_url":"http://forkify-api.herokuapp.com/images/191121d99d.jpg","title":"Fast English Muffin Pizzas","id":"664c8f193e7aa067e94e82b4"},{"publisher":"Chow","image_url":"http://forkify-api.herokuapp.com/images/30624_RecipeImage_620x413_pepperoni_pizza_dip_4774d.jpg","title":"Pepperoni Pizza Dip Recipe","id":"664c8f193e7aa067e94e8a31"},{"publisher":"My Baking Addiction","image_url":"http://forkify-api.herokuapp.com/images/FlatBread21of1a180.jpg","title":"Spicy Chicken and Pepper Jack Pizza","id":"5ed6604591c37cdc054bc886"},{"publisher":"All Recipes","image_url":"http://forkify-api.herokuapp.com/images/237891b5e4.jpg","title":"Jay\u{2019}s Signature Pizza Crust","id":"5ed6604591c37cdc054bc990"},{"publisher":"Two Peas and Their Pod","image_url":"http://forkify-api.herokuapp.com/images/avocadopizzawithcilantrosauce4bf5.jpg","title":"Avocado Pita Pizza with Cilantro Sauce","id":"664c8f193e7aa067e94e880c"},{"publisher":"Two Peas and Their Pod","image_url":"http://forkify-api.herokuapp.com/images/peachbasilpizza6c7de.jpg","title":"Peach, Basil, Mozzarella, & Balsamic Pizza","id":"664c8f193e7aa067e94e882f"},{"publisher":"Bon Appetit","image_url":"http://forkify-api.herokuapp.com/images/figandgoatcheesepizzawitharugula646698d.jpg","title":"Fig and Goat Cheese Pizza with Arugula","id":"664c8f193e7aa067e94e877e"},{"publisher":"The Pioneer Woman","image_url":"http://forkify-api.herokuapp.com/images/4433733640_8b0a5d19fbace0.jpg","title":"CPK\u{2019}s BBQ Chicken Pizza","id":"664c8f193e7aa067e94e86b9"},{"publisher":"Closet Cooking","image_url":"http://forkify-api.herokuapp.com/images/Avocado2Band2BFried2BEgg2BBreakfast2BPizza2B5002B296294dcea8a.jpg","title":"Avocado Breakfast Pizza with Fried Egg","id":"664c8f193e7aa067e94e8476"},{"publisher":"Real Simple","image_url":"http://forkify-api.herokuapp.com/images/20meals14_30007e78232.jpg","title":"Artichoke Pizzas With Lemony Green Bean Salad","id":"664c8f193e7aa067e94e85a2"},{"publisher":"Closet Cooking","image_url":"http://forkify-api.herokuapp.com/images/Thai2BChicken2BPizza2Bwith2BSweet2BChili2BSauce2B5002B435581bcf578.jpg","title":"Thai Chicken Pizza with Sweet Chili Sauce","id":"664c8f193e7aa067e94e84e2"},{"publisher":"Two Peas and Their Pod","image_url":"http://forkify-api.herokuapp.com/images/sweetpotatokalepizza2c6db.jpg","title":"Sweet Potato Kale Pizza with Rosemary & Red Onion","id":"664c8f193e7aa067e94e8823"},{"publisher":"Closet Cooking","image_url":"http://forkify-api.herokuapp.com/images/Strawberry2BBalsamic2BPizza2Bwith2BChicken252C2BSweet2BOnion2Band2BSmoked2BBacon2B5002B300939d125e2.jpg","title":"Balsamic Strawberry and Chicken Pizza with Sweet Onions and Smoked Bacon","id":"664c8f193e7aa067e94e8482"},{"publisher":"Jamie Oliver","image_url":"http://forkify-api.herokuapp.com/images/395_1_1350903959_lrgdd8a.jpg","title":"Egg, prosciutto, artichokes, olives, mozzarella, tomato sauce &amp; basil pizza topping","id":"664c8f193e7aa067e94e8937"},{"publisher":"Two Peas and Their Pod","image_url":"http://forkify-api.herokuapp.com/images/minifruitpizzas52c00.jpg","title":"Mini Fruit Pizzas","id":"664c8f193e7aa067e94e880a"},{"publisher":"All Recipes","image_url":"http://forkify-api.herokuapp.com/images/391236ba85.jpg","title":"Veggie Pizza","id":"664c8f193e7aa067e94e845a"},{"publisher":"My Baking Addiction","image_url":"http://forkify-api.herokuapp.com/images/PizzaDip21of14f05.jpg","title":"Pizza Dip","id":"664c8f193e7aa067e94e840d"},{"publisher":"A Spicy Perspective","image_url":"http://forkify-api.herokuapp.com/images/IMG_4351180x1804f4a.jpg","title":"Greek Pizza","id":"664c8f193e7aa067e94e8438"},{"publisher":"All Recipes","image_url":"http://forkify-api.herokuapp.com/images/7988559586.jpg","title":"Valentine Pizza","id":"664c8f193e7aa067e94e8454"},{"publisher":"BBC Good Food","image_url":"http://forkify-api.herokuapp.com/images/1649634_MEDIUMd3fc.jpg","title":"Pitta pizzas","id":"664c8f193e7aa067e94e838d"},{"publisher":"All Recipes","image_url":"http://forkify-api.herokuapp.com/images/567c8fe.jpg","title":"Pizza Pinwheels","id":"664c8f193e7aa067e94e836e"},{"publisher":"All Recipes","image_url":"http://forkify-api.herokuapp.com/images/104254d419.jpg","title":"Pesto Pizza","id":"664c8f193e7aa067e94e8355"},{"publisher":"All Recipes","image_url":"http://forkify-api.herokuapp.com/images/5100898cc5.jpg","title":"Pizza Casserole","id":"664c8f193e7aa067e94e836b"},{"publisher":"BBC Good Food","image_url":"http://forkify-api.herokuapp.com/images/679637_MEDIUM765c.jpg","title":"Puff pizza tart","id":"664c8f193e7aa067e94e8abd"},{"publisher":"Epicurious","image_url":"http://forkify-api.herokuapp.com/images/51150600f4cb.jpg","title":"Veggi-Prosciutto Pizza","id":"664c8f193e7aa067e94e89af"},{"publisher":"My Baking Addiction","image_url":"http://forkify-api.herokuapp.com/images/BBQChickenPizza3e2b.jpg","title":"Barbecue Chicken Pizza","id":"664c8f193e7aa067e94e89c9"},{"publisher":"The Pioneer Woman","image_url":"http://forkify-api.herokuapp.com/images/pizza3464.jpg","title":"Pizza Potato Skins","id":"664c8f193e7aa067e94e88b9"},{"publisher":"Closet Cooking","image_url":"http://forkify-api.herokuapp.com/images/BBQChickenPizzawithCauliflowerCrust5004699695624ce.jpg","title":"Cauliflower Pizza Crust (with BBQ Chicken Pizza)","id":"664c8f193e7aa067e94e8706"},{"publisher":"Bon Appetit","image_url":"http://forkify-api.herokuapp.com/images/nokneadpizzadoughlahey6461467.jpg","title":"No-Knead Pizza Dough","id":"664c8f193e7aa067e94e8783"},{"publisher":"The Pioneer Woman","image_url":"http://forkify-api.herokuapp.com/images/4797377235_c07589b7d4_be953.jpg","title":"Mexican \u{201C}Flatbread\u{201D} Pizza","id":"664c8f193e7aa067e94e86af"},{"publisher":"The Pioneer Woman","image_url":"http://forkify-api.herokuapp.com/images/grilledveggie79bd.jpg","title":"Grilled Veggie Pizza","id":"664c8f193e7aa067e94e867b"},{"publisher":"The Pioneer Woman","image_url":"http://forkify-api.herokuapp.com/images/pizzaburgera5bd.jpg","title":"Pepperoni Pizza Burgers","id":"664c8f193e7aa067e94e863d"},{"publisher":"The Pioneer Woman","image_url":"http://forkify-api.herokuapp.com/images/burger53be.jpg","title":"Supreme Pizza Burgers","id":"664c8f193e7aa067e94e863b"},{"publisher":"Closet Cooking","image_url":"http://forkify-api.herokuapp.com/images/Taco2BQuesadilla2BPizza2B5002B4417a4755e35.jpg","title":"Taco Quesadilla Pizzas","id":"664c8f193e7aa067e94e84de"},{"publisher":"All Recipes","image_url":"http://forkify-api.herokuapp.com/images/580542e3ec.jpg","title":"Hot Pizza Dip","id":"664c8f193e7aa067e94e82f4"},{"publisher":"Lisa's Kitchen","image_url":"http://forkify-api.herokuapp.com/images/hummus_pizza25f37.jpg","title":"Homemade Spicy Hummus Pizza","id":"664c8f193e7aa067e94e8ad1"},{"publisher":"My Baking Addiction","image_url":"http://forkify-api.herokuapp.com/images/PizzaDough1of12edit5779.jpg","title":"Simple No Knead Pizza Dough","id":"664c8f193e7aa067e94e8a79"},{"publisher":"What's Gaby Cooking","image_url":"http://forkify-api.herokuapp.com/images/PizzaHandPie4e08.jpg","title":"Pepperoni Pizza Hand Pies","id":"664c8f193e7aa067e94e8a13"},{"publisher":"Whats Gaby Cooking","image_url":"http://forkify-api.herokuapp.com/images/IMG_98428b96.jpg","title":"Loaded Veggie and Prosciutto Pizza","id":"664c8f193e7aa067e94e898a"},{"publisher":"BBC Good Food","image_url":"http://forkify-api.herokuapp.com/images/2150654_MEDIUM6068.jpg","title":"Pizza bianco with artichoke hearts","id":"664c8f193e7aa067e94e897b"}]}}`;
 const mockIDjson = `{"status":"success","data":{"recipe":{"publisher":"The Pioneer Woman","ingredients":[{"quantity":1,"unit":"tsp","description":"active dry yeast"},{"quantity":0.75,"unit":"cup","description":"warm water"},{"quantity":2,"unit":"cups","description":"all-purpose flour"},{"quantity":0.75,"unit":"tsp","description":"kosher salt"},{"quantity":3,"unit":"tbsps","description":"olive oil"},{"quantity":1,"unit":"","description":"whole recipe pizza crust"},{"quantity":1,"unit":"","description":"whole skirt steak or flank steak"},{"quantity":null,"unit":"","description":"Salt and pepper to taste"},{"quantity":2,"unit":"","description":"whole red onions sliced thin"},{"quantity":3,"unit":"tbsps","description":"butter"},{"quantity":4,"unit":"tbsps","description":"balsamic vinegar"},{"quantity":0.5,"unit":"tsp","description":"worcestershire sauce"},{"quantity":2,"unit":"cups","description":"marinara sauce"},{"quantity":12,"unit":"oz","description":"weight fresh mozzarella cheese sliced thin"},{"quantity":null,"unit":"","description":"Shaved parmesan cheese"},{"quantity":0.5,"unit":"cup","description":"good steak sauce"}],"source_url":"http://thepioneerwoman.com/cooking/2011/09/steakhouse-pizza/","image_url":"http://forkify-api.herokuapp.com/images/steakhousepizza0b87.jpg","title":"One Basic Pizza Crust","servings":4,"cooking_time":105,"id":"664c8f193e7aa067e94e8673"}}}`;
 
@@ -957,12 +1012,19 @@ const mockIDjson = `{"status":"success","data":{"recipe":{"publisher":"The Pione
 // TODO functions that we are going to use multiple times in our project
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "getJSON", ()=>getJSON);
+parcelHelpers.export(exports, "AJAX", ()=>AJAX);
 var _config = require("./config");
-const getJSON = async function(url) {
+const AJAX = async function(url, uploadData) {
     try {
+        const fetchPro = uploadData ? fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(uploadData)
+        }) : fetch(url);
         const res = await Promise.race([
-            fetch(url),
+            fetchPro,
             timeout((0, _config.TIMEOUT_SECONDS))
         ]);
         const data = await res.json();
@@ -1051,7 +1113,7 @@ class RecipeView extends (0, _viewJsDefault.default) {
             </div>
           </div>
 
-          <div class="recipe__user-generated">
+          <div class="recipe__user-generated ${this._data.key ? '' : 'hidden'}">
             <svg>
               <use href="${0, _iconsSvgDefault.default}#icon-user"></use>
             </svg>
@@ -1118,7 +1180,14 @@ class View {
     _data;
     _errorMessage = "We couldn't find the food. Please try another one";
     _successMessage = '';
-    render(data, render = true) {
+    /**
+     * render the received object to the DOM
+     * @param {Object | Object[]} data the data to be rendered (e.g. recipe)
+     * @param {boolean} [render = true] (optional) if false, creates HTMLstring instead of rendering to the DOM
+     * @returns {undefined | string} A HTML string is returned if render=false
+     * @this {Object} View instance
+     * @author Jonas Schmedtmann
+     */ render(data, render = true) {
         if (!data || Array.isArray(data) && data.length === 0 || Object.keys(data).length === 0) return this.renderError();
         this._data = data;
         const HTML = this._generateHTML();
@@ -1167,24 +1236,18 @@ class View {
     }
     update(data) {
         this._data = data;
-        // console.log('this._data in View:', this._data);
         const newHTML = this._generateHTML();
-        // console.log(newHTML);
         const newDOM = document.createRange().createContextualFragment(newHTML);
         const newElements = Array.from(newDOM.querySelectorAll('*'));
         // The element which we want to update
         const curElements = Array.from(this._parentElement.querySelectorAll('*'));
         newElements.forEach((newEl, i)=>{
             const curEl = curElements[i];
-            // console.log(curEl, newEl.isEqualNode(curEl));
             // Updates changed TEXT
-            if (!newEl.isEqualNode(curEl) && newEl.firstChild?.nodeValue.trim() !== '') // console.log('🔴🔴', newEl.firstChild.nodeValue.trim());
-            curEl.textContent = newEl.textContent;
+            if (!newEl.isEqualNode(curEl) && newEl.firstChild?.nodeValue.trim() !== '') curEl.textContent = newEl.textContent;
             // Updates changed ATTRIBUTES
             if (!newEl.isEqualNode(curEl)) Array.from(newEl.attributes).forEach((attr)=>curEl.setAttribute(attr.name, attr.value));
         });
-    // console.log(newElements);
-    // console.log(curElements);
     }
     _clear() {
         this._parentElement.innerHTML = '';
@@ -1224,8 +1287,6 @@ var _viewJs = require("./View.js");
 var _viewJsDefault = parcelHelpers.interopDefault(_viewJs);
 var _previewViewJs = require("./previewView.js");
 var _previewViewJsDefault = parcelHelpers.interopDefault(_previewViewJs);
-var _iconsSvg = require("url:../../img/icons.svg"); // Because of Parcel2
-var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
 class ResultsView extends (0, _viewJsDefault.default) {
     _parentElement = document.querySelector('.results');
     _errorMessage = 'No recipe is found for the searched item. Please Try again';
@@ -1236,7 +1297,7 @@ class ResultsView extends (0, _viewJsDefault.default) {
 }
 exports.default = new ResultsView();
 
-},{"./View.js":"jSw21","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","url:../../img/icons.svg":"fd0vu","./previewView.js":"6tKHS"}],"6tKHS":[function(require,module,exports,__globalThis) {
+},{"./View.js":"jSw21","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./previewView.js":"6tKHS"}],"6tKHS":[function(require,module,exports,__globalThis) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 var _viewJs = require("./View.js");
@@ -1255,6 +1316,11 @@ class PreviewView extends (0, _viewJsDefault.default) {
               <div class="preview__data">
                 <h4 class="preview__title">${this._data.title}</h4>
                 <p class="preview__publisher">${this._data.publisher}</p>
+                <div class="preview__user-generated ${this._data.key ? '' : 'hidden'}">
+                  <svg>
+                  <use href="${0, _iconsSvgDefault.default}#icon-user"></use>
+                  </svg>
+                </div>
               </div>
             </a>
           </li>
@@ -1330,8 +1396,6 @@ var _viewJs = require("./View.js");
 var _viewJsDefault = parcelHelpers.interopDefault(_viewJs);
 var _previewViewJs = require("./previewView.js");
 var _previewViewJsDefault = parcelHelpers.interopDefault(_previewViewJs);
-var _iconsSvg = require("url:../../img/icons.svg"); // Because of Parcel2
-var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
 class BookmarksView extends (0, _viewJsDefault.default) {
     _parentElement = document.querySelector('.bookmarks__list');
     _errorMessage = 'No bookmarks yet. Find a recipe and bookmark it.';
@@ -1345,6 +1409,45 @@ class BookmarksView extends (0, _viewJsDefault.default) {
 }
 exports.default = new BookmarksView();
 
-},{"./View.js":"jSw21","url:../../img/icons.svg":"fd0vu","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./previewView.js":"6tKHS"}]},["5DuvQ","7dWZ8"], "7dWZ8", "parcelRequire3a11", {}, "./", "/")
+},{"./View.js":"jSw21","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT","./previewView.js":"6tKHS"}],"8AWnP":[function(require,module,exports,__globalThis) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _viewJs = require("./View.js");
+var _viewJsDefault = parcelHelpers.interopDefault(_viewJs);
+class AddRecipeView extends (0, _viewJsDefault.default) {
+    _parentElement = document.querySelector('.upload');
+    _successMessage = 'Recipe successfully uploaded';
+    _window = document.querySelector('.add-recipe-window');
+    _overlay = document.querySelector('.overlay');
+    _btnOpen = document.querySelector('.nav__btn--add-recipe');
+    _btnClose = document.querySelector('.btn--close-modal');
+    constructor(){
+        super();
+        this._btnOpen.addEventListener('click', this._addHandlerWindowCloseAndOpen.bind(this));
+        this._btnClose.addEventListener('click', this._addHandlerWindowCloseAndOpen.bind(this));
+        this._overlay.addEventListener('click', this._addHandlerWindowCloseAndOpen.bind(this));
+    }
+    _addHandlerWindowCloseAndOpen() {
+        this._overlay.classList.toggle('hidden');
+        this._window.classList.toggle('hidden');
+    }
+    _addHandlerUpload(handler) {
+        this._parentElement.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const dataArray = [
+                ...new FormData(this)
+            ];
+            const data = Object.fromEntries(dataArray);
+            handler(data);
+        });
+    }
+    toggleWindow() {
+        this._overlay.classList.toggle('hidden');
+        this._window.classList.toggle('hidden');
+    }
+}
+exports.default = new AddRecipeView();
+
+},{"./View.js":"jSw21","@parcel/transformer-js/src/esmodule-helpers.js":"jnFvT"}]},["5DuvQ","7dWZ8"], "7dWZ8", "parcelRequire3a11", {}, "./", "/")
 
 //# sourceMappingURL=Forkify.4a59a05f.js.map
